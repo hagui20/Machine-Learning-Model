@@ -1,0 +1,151 @@
+---
+title: "Weight Lifting Exercise"
+author: "Francisco Aguilar"
+date: "Wednesday, January 21, 2015"
+output: html_document
+---
+
+
+###Introduction to Dataset
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes. Participants were supervised by an experienced weight lifter to make sure the execution complied to the manner they were supposed to simulate. The exercises were performed by six male participants aged between 20-28 years, with little weight lifting experience. We made sure that all participants could easily simulate the mistakes in a safe and controlled manner by using a relatively light dumbbell (1.25kg).
+
+
+
+
+###Dataset Exploration
+First, we load the training dataset, from where we are going to build our model.
+```{r echo=FALSE}
+library(caret)
+training <- read.csv("C:\\Users\\Fran\\Documents\\Machine Learning\\pml-training.csv")
+```
+```{r}
+dim(training)
+```
+As we can see, we have we have 19622 cases and 160 variables. 
+
+The goal of our project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. 
+```{r}
+summary(training$classe)
+```
+
+Now, we are going to extract the variables that we are interested in order to predict the "classe" variable. The interesting variables to predict the "classe" variable are all measurements from the different sensors. From viewing the training dataset, we can extract the next measurements:
+
+"roll", "pitch", "yaw" and "total accel" variables from each part of the body
+"gyros" variable from each part of the body (x,y,z)
+"accel" variable from each part of the body (x,y,z)
+"magnet" variable from each part of the body (x,y,z)
+
+Now, we are going to extract these variables from the training dataset. These variables are our features to build our model:
+
+```{r echo=FALSE}
+featurestraining <- c(grep("^roll", names(training)), grep("^pitch", names(training)), grep("^yaw", names(training)), grep("^total_accel", names(training)),grep("^accel", names(training)), grep("^gyros", names(training)), grep("^magnet", names(training)))
+trainmodel <- training[, c(featurestraining, 160)]
+```
+From this extraction we get 52 features:
+
+```{r}
+length(featurestraining)
+```
+Let´s check if we have some missing values in our "featurestraining" dataset:
+
+
+```{r}
+sum(is.na(trainmodel))
+```
+
+In order to remove any variable from dataset, we are going to check if any variable has no variance:
+
+```{r}
+nearZeroVar(trainmodel[, -53], saveMetric = TRUE)
+```
+
+As we can see, no variable has no variance.
+```{r}
+
+```
+
+###Cross-Validation
+
+To evaluate our model we are going to use Cross-Validation. To do it, we divide the trainmodel into a trainingset and a testset. 80% of the trainmodel is for the trainingset:
+
+```{r}
+inTrain <- createDataPartition(y = trainmodel$classe, p = 0.8, list = FALSE)
+trainingset <- trainmodel[inTrain, ]
+testset <- trainmodel[-inTrain, ]
+dim(trainingset)
+dim(testset)
+```
+Now, we are going to apply different algorithms in order to see which is better.
+
+Linear Discrimanation Analysis:
+
+
+```{r}
+set.seed(150)
+modFit <- train(classe ~ ., data = trainingset, method = "lda", preProcess = c("center","scale"))
+modFit
+```
+
+Quadratic Discrmination Analysis:
+
+```{r}
+set.seed(150)
+modFit <- train(classe ~ ., data = trainingset, method = "qda", preProcess = c("center","scale"))
+modFit
+```
+
+Rpart:
+
+```{r}
+set.seed(150)
+modFit <- train(classe ~ ., data = trainingset, method = "rpart")
+modFit
+```
+
+(I have tried to run a random forest algorithm, but my computer has not been able to give me any result)
+
+As we can see, the best algorithm is the quadratic discrimantion algorithm where we obtain an accuracy of 89%.
+
+###Confusion Matrix
+
+Now, we are going to evaluate our model in the testset of the training data. Here we build the confusion matrix:
+
+```{r}
+set.seed(150)
+modFit <- train(classe ~ ., data = trainingset, method = "qda", preProcess = c("center","scale"))
+
+testmodel <- predict(modFit, newdata = testset)
+confusionMatrix(data = testmodel, reference = testset$classe)
+```
+
+As we can see, we get a good model in order to predict the test data.
+
+###Prediction
+
+Now we load the test data and we extract, from it, the variables from which we have built our model:
+
+```{r echo=FALSE}
+testdata<-read.csv("C:\\Users\\Fran\\Documents\\Machine Learning\\pml-testing.csv")
+testdata2 <- testdata[, c(featurestraining, 160)]
+
+```
+
+Now, we apply our model in order to predict the 20 cases:
+
+```{r}
+predictor<-predict(modFit, newdata = testdata2)
+predictor
+```
+
+
+
+
+
+
+
+
+
